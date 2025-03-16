@@ -1,10 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using Markdig;
+﻿using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using Microsoft.AspNetCore.Mvc;
 using RazorLight;
 using Serilog;
 
@@ -16,6 +12,7 @@ namespace Booker
         private MiesConfig MiesConfig;
         private SiteConfig SiteConfig;
         private ThemeConfig ThemeConfig;
+        private string sourceDirectoryPath;
 
         private MarkdownPipeline Pipeline;
         private RazorLightEngine Engine;
@@ -151,6 +148,7 @@ namespace Booker
         public async Task<AllPages> ProcessPages (int max) {
             var rawfiles = GetThemeDirectory(ThemeConfig.RawFilesDir);
             var inputs = GetSiteDirectory(SiteConfig.PagesDir);
+            sourceDirectoryPath = inputs.FullName;
             var outputs = GetSiteDirectory(SiteConfig.OutputsDir);
 
             Log.Debug($"  Theme: {ThemeConfig.ConfigFile.FullName}");
@@ -240,9 +238,15 @@ namespace Booker
         /// Each empty result contains info about the page's filesystem paths, and will be filled in later
         /// </summary>
         private PageResult PrepareEmptyPageResult (FileInfo inpath, DirectoryInfo outputs) {
+            var dir = inpath.DirectoryName;
             var name = inpath.Name;
-            if (name == "0.md")
-                name = Path.GetFileName(inpath.DirectoryName)!;
+            if (name == "0.md") {
+                
+                if (dir == sourceDirectoryPath)
+                    name = "index.md";
+                else
+                    name = Path.GetFileName(dir)!;
+            }
             if (char.IsDigit(name[0]))
                 name = name.Substring(name.IndexOf(' ') + 1);
             var outfile = Path.ChangeExtension(name, ".html");
@@ -343,6 +347,9 @@ namespace Booker
                 {
                     if (pageNames.TryGetValue(url.ToLower(), out var p)) {
                         link.Url = p;
+                    } else {
+                        var path = page.InPath.FullName.Substring(sourceDirectoryPath.Length+1);
+                        Log.Warning($"{path}: Unknown link url '{url}'");
                     }
                 }
             }
