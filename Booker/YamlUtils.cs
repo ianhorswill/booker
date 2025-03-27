@@ -35,7 +35,7 @@ namespace Booker
                 }
             }
 
-            throw new InvalidOperationException($"Markdown file missing a header block: {filename.Name}");
+            throw new InvalidOperationException($"Markdown file missing a header block: {filename.Directory.Name}/{filename.Name}");
         }
 
         // This class is more than a bit of a hack. :) I wanted to convert yaml files into

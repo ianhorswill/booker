@@ -1,8 +1,10 @@
-﻿using Markdig;
+﻿using System.Net.Mime;
+using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using RazorLight;
 using Serilog;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Booker
 {
@@ -89,7 +91,11 @@ namespace Booker
             await Task.Delay(int.MaxValue);
         }
 
+        public static event Action? OnRebuild;
+
         private async Task Rebuild () {
+            OnRebuild?.Invoke();
+
             Console.WriteLine();
             Log.Information("Rebuilding");
             try {
@@ -343,7 +349,7 @@ namespace Booker
             // Find all the links whose URLs are names of pages and replace them with the URL for the page.
             foreach (var link in document.Descendants<LinkInline>()) {
                 var url = link.Url;
-                if (!url.StartsWith("http"))
+                if (url!= null && !url.StartsWith("http"))
                 {
                     if (pageNames.TryGetValue(url.ToLower(), out var p)) {
                         link.Url = p;

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Diagnostics;
 
 namespace Booker
 {
@@ -98,6 +95,8 @@ namespace Booker
             get {
                 if (Previous != null)
                     return Previous;
+                if (Up is { Previous.Children.Length: > 0 })
+                    return Up.Previous.Children[^1];
                 return Up;
             }
         }

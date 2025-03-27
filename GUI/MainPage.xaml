@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:gui="clr-namespace:GUI"
+             x:Class="GUI.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="30,0"
+            Spacing="25">
+            <HorizontalStackLayout>
+                <Label Text="Site path:"/>
+                <Entry x:Name="SitePath"/>
+                <Button
+                    x:Name="StartButton"
+                    Text="Start" 
+                    Clicked="StartButton_OnClicked"
+                    HorizontalOptions="Fill" />
+            </HorizontalStackLayout>
+            <ListView x:Name="EventLog" ItemsSource="{Binding LogEvents}">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="gui:LogEventWrapper">
+                        <TextCell TextColor="{Binding Color}" Text="{Binding Message}"/>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

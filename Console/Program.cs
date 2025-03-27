@@ -7,7 +7,7 @@ lconfig = Verbose ? lconfig.MinimumLevel.Debug() : lconfig.MinimumLevel.Informat
 lconfig = lconfig.WriteTo.Console();
 Log.Logger = lconfig.CreateLogger();
 
-var site = @"c:\users\ianho\Documents\GitHub\Declarative Programming For Games";
+var site = @"c:\users\ianho\Documents\GitHub\DPFG";
 var dir = new DirectoryInfo(site);
 
 var config = new MiesConfig {
