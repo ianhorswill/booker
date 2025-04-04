@@ -1,23 +1,23 @@
-﻿using System.Net.Mime;
-using Markdig;
+﻿using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using RazorLight;
 using Serilog;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Booker
 {
     public class SiteGenerator
     {
         public const string SourceExtension = ".md";
-        private MiesConfig MiesConfig;
-        private SiteConfig SiteConfig;
-        private ThemeConfig ThemeConfig;
-        private string sourceDirectoryPath;
+        public readonly MiesConfig MiesConfig;
+        public readonly SiteConfig SiteConfig;
+        public readonly ThemeConfig ThemeConfig;
+        private string? sourceDirectoryPath;
 
-        private MarkdownPipeline Pipeline;
-        private RazorLightEngine Engine;
+        public readonly MarkdownPipeline Pipeline;
+        public readonly RazorLightEngine Engine;
+
+        private Dictionary<string, string> pageNames = new();
 
         public int MaxPages = 100;
 
@@ -52,12 +52,12 @@ namespace Booker
         /// </summary>
         public async Task<int> Execute (int max) {
             await ProcessPages(max);
-            await MonitorChanges(max);
+            await MonitorChanges();
             return 0;
         }
 
         private bool rebuilding;
-        private async Task MonitorChanges (int max) {
+        private async Task MonitorChanges () {
 
             void MaybeRebuild (object sender, FileSystemEventArgs e) {
                 lock (this) {
@@ -65,7 +65,7 @@ namespace Booker
                         return;
                     rebuilding = true;
                 }
-                Rebuild();
+                _ = Rebuild();
             }
 
             using var watcher = new FileSystemWatcher(MiesConfig.SiteDirectory.FullName);
@@ -116,12 +116,12 @@ namespace Booker
 
 
         private void CheckExistence (DirectoryInfo info, string debugName) {
-            if (info.Exists) { return; }
+            if (info.Exists) return;
             throw new DirectoryNotFoundException($"{debugName} not found: {info.FullName}");
         }
 
         private void CheckExistence (FileInfo info, string debugName) {
-            if (info.Exists) { return; }
+            if (info.Exists) return;
             throw new FileNotFoundException($"{debugName} not found: {info.FullName}");
         }
 
@@ -145,8 +145,6 @@ namespace Booker
             result.ConfigFile = themeYaml;
             return result;
         }
-
-        private Dictionary<string, string>pageNames;
 
         //
         // page loading and generation
@@ -173,9 +171,9 @@ namespace Booker
                 for (var i = 1; i < entries.Length; i++) {
                     var p = entries[i];
                     PageResult page;
-                    if (Equals(Path.GetExtension(p), ".md")) {
+                    if (Equals(Path.GetExtension(p), ".md"))
                         page = PrepareEmptyPageResult(new FileInfo(p), outputs);
-                    } else {
+                    else {
                         var result = LoadDirectory(p);
                         page = result.root;
                         subtree = subtree.Concat(result.subTree);
@@ -210,7 +208,7 @@ namespace Booker
 
             // Load the pages
             Log.Information($"Loading {all.Pages.Count} markdown pages...");
-            foreach (var page in all.Pages) { LoadPage(page, all); }
+            foreach (var page in all.Pages) LoadPage(page, all);
 
             // Link the pages together
             foreach (var page in all.Pages) {
@@ -226,14 +224,14 @@ namespace Booker
             MoveIndexPagesToEnd(all.Pages);
 
             Log.Information("Converting pages to HTML...");
-            foreach (var page in all.Pages) { await RenderPage(page); }
+            foreach (var page in all.Pages) await RenderPage(page);
 
             Log.Information("Preparing the output directory...");
             ClearOutOutputDirectory(outputs);
             CopyRawFiles(rawfiles, outputs);
 
             Log.Information("Writing HTML pages to disk...");
-            foreach (var page in all.Pages) { WritePage(page); }
+            foreach (var page in all.Pages) WritePage(page);
 
             Log.Information($"Done. Processed {all.Pages.Count} pages.");
             return all;
@@ -351,10 +349,10 @@ namespace Booker
                 var url = link.Url;
                 if (url!= null && !url.StartsWith("http"))
                 {
-                    if (pageNames.TryGetValue(url.ToLower(), out var p)) {
+                    if (pageNames.TryGetValue(url.ToLower(), out var p))
                         link.Url = p;
-                    } else {
-                        var path = page.InPath.FullName.Substring(sourceDirectoryPath.Length+1);
+                    else {
+                        var path = page.InPath.FullName.Substring(sourceDirectoryPath!.Length+1);
                         Log.Warning($"{path}: Unknown link url '{url}'");
                     }
                 }

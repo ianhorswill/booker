@@ -1,5 +1,4 @@
 ﻿using Serilog.Events;
-using Serilog;
 
 namespace GUI
 {

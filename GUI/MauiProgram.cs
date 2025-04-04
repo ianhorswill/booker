@@ -2,7 +2,7 @@
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Sinks.Observable;
+
 namespace GUI;
 
 public static class MauiProgram

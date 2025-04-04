@@ -4,15 +4,15 @@ using Serilog.Events;
 
 namespace GUI
 {
-    public partial class MainPage : ContentPage
+    public partial class MainPage
     {
-        public static MainPage Singleton;
+        public static MainPage Singleton = null!;
 
         public MainPage () {
             //LogEvents.Add(new LogEventWrapper(null));
             InitializeComponent();
             EventLog.ItemsSource = LogEvents;
-            var path = Preferences.Get(sitePathKey, "");
+            var path = Preferences.Get(SitePathKey, "");
             SitePath.Text = path;
             //if (Directory.Exists(path))
             //    StartSite(path);
@@ -20,16 +20,16 @@ namespace GUI
             SiteGenerator.OnRebuild += () => Application.Current!.Dispatcher.Dispatch(ClearLog);
         }
 
-        private const string sitePathKey = "SitePath";
+        private const string SitePathKey = "SitePath";
 
-        private async void StartButton_OnClicked (object? sender, EventArgs e) {
+        private void StartButton_OnClicked (object? sender, EventArgs e) {
             StartButton.IsEnabled = false;
             StartSite(SitePath.Text);
         }
 
         public async void StartSite (string site) {
-            if (Preferences.Get(sitePathKey, "") != site)
-                Preferences.Set(sitePathKey, site);
+            if (Preferences.Get(SitePathKey, "") != site)
+                Preferences.Set(SitePathKey, site);
 
             var dir = new DirectoryInfo(site);
 
@@ -40,7 +40,7 @@ namespace GUI
 
             var gen = new SiteGenerator(config);
 
-            var status = await gen.Execute(100);
+            await gen.Execute(100);
         }
 
         private void ClearLog() => LogEvents.Clear();
@@ -61,12 +61,12 @@ namespace GUI
             if (e.Level >= LogEventLevel.Warning) {
 #if WINDOWS
 // Bring window to front.  There has to be a better way than this
-Microsoft.UI.Xaml.Window window = (Microsoft.UI.Xaml.Window)App.Current.Windows.First<Window>().Handler.PlatformView;
+Microsoft.UI.Xaml.Window window = (Microsoft.UI.Xaml.Window)Application.Current!.Windows.First().Handler!.PlatformView!;
 IntPtr windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
 Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(windowHandle);
 Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
-(appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter).IsAlwaysOnTop = true;
-(appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter).IsAlwaysOnTop = false;
+((appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)!).IsAlwaysOnTop = true;
+((appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)!).IsAlwaysOnTop = false;
 #endif
             }
         }

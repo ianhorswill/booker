@@ -30,12 +30,13 @@ namespace Booker
                 StringBuilder sb = new StringBuilder();
                 var next = lines.Skip(1);
                 foreach (var line in next) {
-                    if (line.StartsWith("---")) { return sb.ToString(); }
+                    if (line.StartsWith("---"))
+                        return sb.ToString();
                     sb.AppendLine(line);
                 }
             }
 
-            throw new InvalidOperationException($"Markdown file missing a header block: {filename.Directory.Name}/{filename.Name}");
+            throw new InvalidOperationException($"Markdown file missing a header block: {filename.Directory!.Name}/{filename.Name}");
         }
 
         // This class is more than a bit of a hack. :) I wanted to convert yaml files into
@@ -50,7 +51,7 @@ namespace Booker
                 var serializer = new SharpYaml.Serialization.Serializer();
                 data = (Dictionary<object, object>)serializer.Deserialize(yaml)!;
             } catch (Exception e) {
-                throw new InvalidOperationException($"Error while parsing yaml header for {filename.Directory.Name}/{filename.Name}", e);
+                throw new InvalidOperationException($"Error while parsing yaml header for {filename.Directory?.Name}/{filename.Name}", e);
             }
 
             try {
@@ -58,7 +59,7 @@ namespace Booker
                 var deserialized = JsonConvert.DeserializeObject<T>(serialized);
                 return deserialized!;
             } catch (Exception e) {
-                throw new InvalidOperationException($"Error recognizing header variables for {filename.Directory.Name}/{filename.Name}", e);
+                throw new InvalidOperationException($"Error recognizing header variables for {filename.Directory?.Name}/{filename.Name}", e);
             }
         }
     }
