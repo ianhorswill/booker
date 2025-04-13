@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using System.Reflection;
+using Newtonsoft.Json;
 using System.Text;
+using Serilog;
 
 namespace Booker
 {
@@ -53,6 +55,15 @@ namespace Booker
             } catch (Exception e) {
                 throw new InvalidOperationException($"Error while parsing yaml header for {filename.Directory?.Name}/{filename.Name}", e);
             }
+
+            foreach (var setting in data)
+                if (typeof(PageModel).GetMember((string)setting.Key,
+                        BindingFlags.IgnoreCase
+                        | BindingFlags.FlattenHierarchy | BindingFlags.Instance
+                        | BindingFlags.GetField | BindingFlags.GetProperty
+                        | BindingFlags.NonPublic | BindingFlags.Public)
+                    == null)
+                    Log.Warning($"{filename.Name}: No configurable property named \"{setting.Key}\"");
 
             try {
                 var serialized = JsonConvert.SerializeObject(data);

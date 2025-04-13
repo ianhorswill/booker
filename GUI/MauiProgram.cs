@@ -2,6 +2,7 @@
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using CommunityToolkit.Maui.Core;
 
 namespace GUI;
 
@@ -12,6 +13,7 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+            .UseMauiCommunityToolkitCore()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Booker;
+using CommunityToolkit.Maui.Storage;
+using Microsoft.Extensions.Logging.EventSource;
 using Serilog.Events;
 
 namespace GUI
@@ -68,6 +70,37 @@ Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.Ge
 ((appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)!).IsAlwaysOnTop = true;
 ((appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)!).IsAlwaysOnTop = false;
 #endif
+            }
+        }
+
+        /// <summary>
+        /// Renumber children of a folder in increments of 10
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void RenumberButton_OnClicked (object? sender, EventArgs e) {
+            var result = await FolderPicker.Default.PickAsync(SitePath.Text);
+            if (result.Folder == null)
+                return;
+            var path = result.Folder.Path;
+            var children = Directory.GetFileSystemEntries(path);
+            Array.Sort(children);
+            if (Path.GetFileName(children[0]) != "0.md") {
+                // Something wrong...
+                return;
+            }
+
+            var big = children.Length >= 10;
+            for (var i = 1; i < children.Length; i++) {
+                string childPath = children[i];
+                var name = Path.GetFileName(childPath);
+                var realName = name.Substring(name.IndexOf(' ')+1);
+                var sequenceNumber = big ? $"{i * 10:D3}" : $"{i * 10:D2}";
+                var newPath = Path.Combine(path,$"{sequenceNumber} {realName}");
+                if (Directory.Exists(childPath))
+                    Directory.Move(childPath, newPath);
+                else
+                    File.Move(childPath,newPath);
             }
         }
     }

@@ -159,23 +159,30 @@ namespace Booker
             Log.Debug($"  Input directory: {inputs.FullName}");
             Log.Debug($"  Output directory: {outputs.FullName}");
 
-            (PageResult root, IEnumerable<PageResult> subTree) LoadDirectory (string path) {
+            (PageResult root, IEnumerable<PageResult> subTree) LoadDirectory (string path, string sequenceNumber) {
                 var entries = Directory.GetFiles(path).Where(p => Equals(Path.GetExtension(p), SourceExtension))
                     .Concat(Directory.GetDirectories(path)).ToArray();
                 Array.Sort(entries);
                 if (!Equals(Path.GetFileName(entries[0]), "0.md"))
                     throw new FileNotFoundException($"Directory {path} contains no 0.md file");
                 var root = PrepareEmptyPageResult(new FileInfo(entries[0]), outputs);
+                root.SequenceNumber = sequenceNumber;
                 IEnumerable<PageResult> subtree = new[] { root };
+
+                // Read children
                 var children = new PageResult[entries.Length - 1];
                 for (var i = 1; i < entries.Length; i++) {
                     var p = entries[i];
                     PageResult page;
-                    if (Equals(Path.GetExtension(p), ".md"))
+                    var mySequenceNumber = $"{sequenceNumber}.{i}";
+                    if (Equals(Path.GetExtension(p), ".md")) {
                         page = PrepareEmptyPageResult(new FileInfo(p), outputs);
+                        page.SequenceNumber = $"{sequenceNumber}.{i}";
+                    }
                     else {
-                        var result = LoadDirectory(p);
+                        var result = LoadDirectory(p, mySequenceNumber);
                         page = result.root;
+                        page.SequenceNumber = sequenceNumber;
                         subtree = subtree.Concat(result.subTree);
                     }
                     subtree = subtree.Append(page);
@@ -196,7 +203,7 @@ namespace Booker
                 return (root, subtree);
             }
 
-            var everything = LoadDirectory(inputs.FullName);
+            var everything = LoadDirectory(inputs.FullName, "");
 
             var pages = everything.subTree.Distinct().ToList();
 
@@ -213,9 +220,10 @@ namespace Booker
             // Link the pages together
             foreach (var page in all.Pages) {
                 var model = page.Model;
-                model.Up = page.Up?.Model;
-                model.Next = page.Next?.Model;
-                model.Previous = page.Previous?.Model;
+                model.Parent = page.Up?.Model;
+                model.NextSibling = page.Next?.Model;
+                model.PreviousSibling = page.Previous?.Model;
+                model.SequenceNumber = page.SequenceNumber;
                 if (page.Children != null)
                     model.Children = page.Children.Select(p => p.Model).ToArray();
             }

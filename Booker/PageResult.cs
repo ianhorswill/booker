@@ -17,6 +17,13 @@ public class PageResult
     public PageResult? Next;
     public PageResult? Previous;
     public PageResult[]? Children;
+
+    /// <summary>
+    /// Sequence number string for page: chapter.section.subsection.etc., e.g. "2.1.7"
+    /// Generated automatically.  Is empty string for top-level table.
+    /// </summary>
+    public string SequenceNumber = "";
+
     public string Name => OutPath.Name;
     public string LinkName => Name.Replace(' ', '_');
 }

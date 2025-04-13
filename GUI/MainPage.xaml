@@ -24,6 +24,7 @@
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
+            <Button x:Name="RenumberButton" Text="Renumber folder ..." Clicked="RenumberButton_OnClicked"/>
         </VerticalStackLayout>
     </ScrollView>
 
