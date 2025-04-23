@@ -163,7 +163,7 @@ namespace Booker
                 var entries = Directory.GetFiles(path).Where(p => Equals(Path.GetExtension(p), SourceExtension))
                     .Concat(Directory.GetDirectories(path)).ToArray();
                 Array.Sort(entries);
-                if (!Equals(Path.GetFileName(entries[0]), "0.md"))
+                if (entries.Length == 0 || !Equals(Path.GetFileName(entries[0]), "0.md"))
                     throw new FileNotFoundException($"Directory {path} contains no 0.md file");
                 var root = PrepareEmptyPageResult(new FileInfo(entries[0]), outputs);
                 root.SequenceNumber = sequenceNumber;
@@ -237,6 +237,7 @@ namespace Booker
             Log.Information("Preparing the output directory...");
             ClearOutOutputDirectory(outputs);
             CopyRawFiles(rawfiles, outputs);
+            CopyMediaFiles(inputs.FullName, outputs.FullName);
 
             Log.Information("Writing HTML pages to disk...");
             foreach (var page in all.Pages) WritePage(page);
@@ -244,6 +245,19 @@ namespace Booker
             Log.Information($"Done. Processed {all.Pages.Count} pages.");
             return all;
         }
+
+        public static readonly string[] MediaExtensions = { ".jpg", ".jpeg", ".png" };
+
+        private void CopyMediaFiles (string inputs, string outputs) {
+            foreach (var file in Directory.GetFiles(inputs))
+                if (HasMediaFileExtension(file))
+                    File.Copy(file, Path.Combine(outputs, Path.GetFileName(file)));
+
+            foreach (var sub in Directory.GetDirectories(inputs))
+                CopyMediaFiles(sub, outputs);
+        }
+
+        private static bool HasMediaFileExtension(string file) => MediaExtensions.Contains(Path.GetExtension(file));
 
 
         /// <summary>
@@ -350,12 +364,19 @@ namespace Booker
 
             var markdown = File.ReadAllText(inpath.FullName);
 
+            var cut = markdown.IndexOf("#NoPublish", StringComparison.InvariantCultureIgnoreCase);
+            if (cut >= 0)
+                markdown = markdown.Substring(0, cut);
+            cut = markdown.IndexOf("# NoPublish", StringComparison.InvariantCultureIgnoreCase);
+            if (cut >= 0)
+                markdown = markdown.Substring(0, cut);
+
             var document = Markdown.Parse(markdown, Pipeline);
 
             // Find all the links whose URLs are names of pages and replace them with the URL for the page.
             foreach (var link in document.Descendants<LinkInline>()) {
                 var url = link.Url;
-                if (url!= null && !url.StartsWith("http"))
+                if (url!= null && !url.StartsWith("http") && !HasMediaFileExtension(url))
                 {
                     if (pageNames.TryGetValue(url.ToLower(), out var p))
                         link.Url = p;

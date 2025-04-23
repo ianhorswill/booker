@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using Booker;
 using CommunityToolkit.Maui.Storage;
-using Microsoft.Extensions.Logging.EventSource;
 using Serilog.Events;
 
 namespace GUI
@@ -9,6 +9,8 @@ namespace GUI
     public partial class MainPage
     {
         public static MainPage Singleton = null!;
+
+        public SiteGenerator? Generator;
 
         public MainPage () {
             //LogEvents.Add(new LogEventWrapper(null));
@@ -40,9 +42,9 @@ namespace GUI
                 SiteConfig = new FileInfo(Path.Combine(dir.FullName, "site.yaml")),
             };
 
-            var gen = new SiteGenerator(config);
+            Generator = new SiteGenerator(config);
 
-            await gen.Execute(100);
+            await Generator.Execute(100);
         }
 
         private void ClearLog() => LogEvents.Clear();
@@ -102,6 +104,22 @@ Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.Ge
                 else
                     File.Move(childPath,newPath);
             }
+        }
+
+        private void OpenButton_OnClicked (object? sender, EventArgs e) {
+            if (Generator == null)
+                return;
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = Path.Combine(Path.Combine(Generator.MiesConfig.SiteDirectory.FullName,Generator.SiteConfig.OutputsDir), "index.html"),
+                UseShellExecute = true // This ensures the file opens with the default application
+            });
+        }
+
+        private void OpenSourceButton_OnClicked (object? sender, EventArgs e) {
+            if (Generator == null)
+                return;
+            VSCode.EditFolder(Generator.MiesConfig.SiteDirectory.FullName);
         }
     }
 

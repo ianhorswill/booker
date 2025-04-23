@@ -24,6 +24,8 @@
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
+            <Button x:Name="OpenSourceButton" Text="Open source" Clicked="OpenSourceButton_OnClicked"/>
+            <Button x:Name="OpenOutputButton" Text="Open html output" Clicked="OpenButton_OnClicked"/>
             <Button x:Name="RenumberButton" Text="Renumber folder ..." Clicked="RenumberButton_OnClicked"/>
         </VerticalStackLayout>
     </ScrollView>

@@ -12,7 +12,7 @@ public class SiteConfig
     public string ThemeFile = null!;    // file name of the theme.yaml file to apply
 
     // settings
-    public string Generator = "Mies";
+    public string Generator = "Booker";
     public string Title = null!, Author = null!, Description = null!;   // filled in by the user, and used to fill in website metadata
     public int RecentPosts;     // controls how many recent posts show up on the main page
 
