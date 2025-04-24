@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Booker;
 using CommunityToolkit.Maui.Storage;
+using Serilog;
 using Serilog.Events;
 
 namespace GUI
@@ -28,7 +29,8 @@ namespace GUI
 
         private void StartButton_OnClicked (object? sender, EventArgs e) {
             StartButton.IsEnabled = false;
-            StartSite(SitePath.Text);
+            Log.Information("Starting");
+            Task.Run(() => StartSite(SitePath.Text));
         }
 
         public async void StartSite (string site) {
