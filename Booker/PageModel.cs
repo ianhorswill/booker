@@ -10,11 +10,19 @@ namespace Booker;
 [DebuggerDisplay("{"+nameof(PageTitle)+"}")]
 public class PageModel
 {
+#if SEQUENCE_NUMBERS
     /// <summary>
     /// Sequence number string for page: chapter.section.subsection.etc., e.g. "2.1.7"
     /// Generated automatically.  Is empty string for top-level table.
     /// </summary>
     public string SequenceNumber = "";
+#endif
+
+    /// <summary>
+    /// Starting number for child pages in sidebar.
+    /// Read from yaml header
+    /// </summary>
+    public int NumberChildrenFrom = 1;
 
     /// <summary>
     /// Title of the page, shown in the browser title bar, metadata, and in inbound links
@@ -89,14 +97,20 @@ public class PageModel
         }
     }
 
-    public PageModel? EffectivePrevious {
+    public PageModel? EffectivePrevious 
+    {
         get {
             if (PreviousSibling != null)
-                return PreviousSibling;
-            if (Parent is { PreviousSibling.Children.Length: > 0 })
-                return Parent.PreviousSibling.Children[^1];
+                return EndOfSubtree(PreviousSibling);
+            // We're the root or the first child of a parent
             return Parent;
         }
+    }
+
+    private PageModel EndOfSubtree (PageModel root) {
+        if (root.Children == null || root.Children.Length == 0)
+            return root;
+        return EndOfSubtree(root.Children[^1]);
     }
 
     /// <summary>

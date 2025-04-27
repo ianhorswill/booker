@@ -65,7 +65,7 @@ namespace Booker
                         return;
                     rebuilding = true;
                 }
-                _ = Rebuild();
+                Task.Run(Rebuild);
             }
 
             using var watcher = new FileSystemWatcher(MiesConfig.SiteDirectory.FullName);
@@ -166,7 +166,9 @@ namespace Booker
                 if (entries.Length == 0 || !Equals(Path.GetFileName(entries[0]), "0.md"))
                     throw new FileNotFoundException($"Directory {path} contains no 0.md file");
                 var root = PrepareEmptyPageResult(new FileInfo(entries[0]), outputs);
+#if SEQUENCE_NUMBERS
                 root.SequenceNumber = sequenceNumber;
+#endif
                 IEnumerable<PageResult> subtree = new[] { root };
 
                 // Read children
@@ -177,12 +179,16 @@ namespace Booker
                     var mySequenceNumber = $"{sequenceNumber}.{i}";
                     if (Equals(Path.GetExtension(p), ".md")) {
                         page = PrepareEmptyPageResult(new FileInfo(p), outputs);
+#if SEQUENCE_NUMBERS
                         page.SequenceNumber = $"{sequenceNumber}.{i}";
+#endif
                     }
                     else {
                         var result = LoadDirectory(p, mySequenceNumber);
                         page = result.root;
+#if SEQUENCE_NUMBERS
                         page.SequenceNumber = sequenceNumber;
+#endif
                         subtree = subtree.Concat(result.subTree);
                     }
                     subtree = subtree.Append(page);
@@ -223,7 +229,9 @@ namespace Booker
                 model.Parent = page.Up?.Model;
                 model.NextSibling = page.Next?.Model;
                 model.PreviousSibling = page.Previous?.Model;
+#if SEQUENCE_NUMBERS
                 model.SequenceNumber = page.SequenceNumber;
+#endif
                 if (page.Children != null)
                     model.Children = page.Children.Select(p => p.Model).ToArray();
             }
