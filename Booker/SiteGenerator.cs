@@ -1,4 +1,5 @@
-﻿using Markdig;
+﻿using System.Text.RegularExpressions;
+using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using RazorLight;
@@ -378,6 +379,8 @@ namespace Booker
             cut = markdown.IndexOf("# NoPublish", StringComparison.InvariantCultureIgnoreCase);
             if (cut >= 0)
                 markdown = markdown.Substring(0, cut);
+
+            markdown = Regex.Replace(markdown, @"\.(\[\^.+\]|)  ", @".$1&ensp; ");
 
             var document = Markdown.Parse(markdown, Pipeline);
 
