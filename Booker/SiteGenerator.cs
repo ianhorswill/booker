@@ -380,7 +380,7 @@ namespace Booker
             if (cut >= 0)
                 markdown = markdown.Substring(0, cut);
 
-            markdown = Regex.Replace(markdown, @"\.(\[\^.+\]|)  ", @".$1&ensp; ");
+            markdown = Regex.Replace(markdown, @"\.(""*\[\^.+\]""*|""*)  ", @".$1&ensp; ");
 
             var document = Markdown.Parse(markdown, Pipeline);
 

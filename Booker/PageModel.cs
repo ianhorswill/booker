@@ -32,6 +32,32 @@ public class PageModel
 
     public string? ShortTitle = null;
 
+    public string Status = "unknown";
+
+    public bool IsReleased => Status switch { "released" => true, "final" => true, _ => false };
+
+    public string StatusColor => Status switch {
+        "final" => "green",
+        "released" => "green",
+        "release-candidate" => "green",
+        "beta" => "yellow",
+        "alpha" => "orange",
+        "stub" => "grey",
+        _ => "red"
+    };
+
+    public string StatusText => Status switch {
+        "final" => "This page is in its final form",
+        "released" => "This page is finished and released",
+        "release-candidate" => "release candidate",
+        "beta" => "beta test",
+        "alpha" => "alpha test",
+        "early-draft" => "early draft",
+        "incomplete-draft" => "incomplete draft",
+        "stub" => "This page is a stub.  A real page will be added later.",
+        _ => $"The status of this page is '{Status}'.  It probably needs a lot of work."
+    };
+
     public string EffectiveShortTitle => ShortTitle ?? PageTitle;
 
     /// <summary>
