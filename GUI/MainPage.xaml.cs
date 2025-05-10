@@ -87,7 +87,8 @@ Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.Ge
             if (result.Folder == null)
                 return;
             var path = result.Folder.Path;
-            Booker.Utilities.RenumberFolder(path);
+            lock (Generator)
+                Utilities.RenumberFolder(path);
         }
 
         private void OpenButton_OnClicked (object? sender, EventArgs e) {
@@ -104,6 +105,15 @@ Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.Ge
             if (Generator == null)
                 return;
             VSCode.EditFolder(Generator.MiesConfig.SiteDirectory.FullName);
+        }
+
+        private void RenumberEverythingButton_OnClicked (object? sender, EventArgs e) {
+            if (Generator == null)
+                return;
+            var site = Generator.MiesConfig.SiteDirectory;
+            var source = Path.Combine(site.FullName, Generator.SiteConfig.PagesDir);
+            lock (Generator)
+                Utilities.RenumberFolder(source, true);
         }
     }
 

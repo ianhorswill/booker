@@ -27,6 +27,7 @@
             <Button x:Name="OpenSourceButton" Text="Open source" Clicked="OpenSourceButton_OnClicked"/>
             <Button x:Name="OpenOutputButton" Text="Open rendered html" Clicked="OpenButton_OnClicked"/>
             <Button x:Name="RenumberButton" Text="Renumber folder ..." Clicked="RenumberButton_OnClicked"/>
+            <Button x:Name="RenumberEverythingButton" Text="Renumber everything" Clicked="RenumberEverythingButton_OnClicked"/>
         </VerticalStackLayout>
     </ScrollView>
 

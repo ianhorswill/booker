@@ -24,6 +24,9 @@ namespace Booker
         /// and reads everything up to the last line before the second delimiter.
         /// </summary>
         private static string ExtractHeaderText (FileInfo filename, string markdown) {
+            if (markdown == "")
+                return $"PageTitle: \"{Path.GetFileNameWithoutExtension(filename.Name)}\"\n";
+
             var lines = markdown.Split(new char[] { '\r', '\n' })
                 .Where(line => !string.IsNullOrWhiteSpace(line)).ToArray();
 

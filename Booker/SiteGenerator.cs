@@ -386,11 +386,13 @@ namespace Booker
 
             // Find all the links whose URLs are names of pages and replace them with the URL for the page.
             foreach (var link in document.Descendants<LinkInline>()) {
-                var url = link.Url;
-                if (url!= null && !url.StartsWith("http") && !HasMediaFileExtension(url))
-                {
+                var target = link.Url;
+                if (target!= null && !target.StartsWith("http") && !HasMediaFileExtension(target)) {
+                    var hash = target.IndexOf('#');
+                    var url = hash > 0 ? target.Substring(0, hash) : target;
+                    var anchor = hash > 0 ? target.Substring(hash) : "";
                     if (pageNames.TryGetValue(url.ToLower(), out var p))
-                        link.Url = p;
+                        link.Url = p+anchor;
                     else {
                         var path = page.InPath.FullName.Substring(sourceDirectoryPath!.Length+1);
                         Log.Warning($"{path}: Unknown link url '{url}'");
