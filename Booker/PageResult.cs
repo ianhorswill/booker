@@ -17,6 +17,7 @@ public class PageResult
     public PageResult? Next;
     public PageResult? Previous;
     public PageResult[]? Children;
+    public PageResult[]? SideTrails;
 
 #if SEQUENCE_NUMBERS
     /// <summary>

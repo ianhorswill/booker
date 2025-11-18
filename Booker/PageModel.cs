@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Markdig.Syntax;
 
 namespace Booker;
 
@@ -16,6 +17,8 @@ public class PageModel
     /// Generated automatically.  Is empty string for top-level table.
     /// </summary>
     public string SequenceNumber = "";
+
+    public string? SectionPrefix(string suffix) => SectionType == null ? "" : $"{SectionType.Capitalized()} {SequenceNumber}{suffix}";
 #endif
 
     /// <summary>
@@ -31,6 +34,11 @@ public class PageModel
     public string PageTitle = null!;
 
     public string? ShortTitle = null;
+
+    /// <summary>
+    /// Type of unit this subtree forms: chapter, appendix, etc.  Default null
+    /// </summary>
+    public string? SectionType = null;
 
     public string Status = "unknown";
 
@@ -102,16 +110,24 @@ public class PageModel
     /// </summary>
     public string PageLink = null!;
 
+    public string PageLinkWithoutExtension => Path.GetFileNameWithoutExtension(PageLink);
+
     public PageModel? NextSibling;
     public PageModel? PreviousSibling;
     public PageModel? Parent;
     public PageModel[]? Children;
+    public PageModel[]? SideTrails;
+    public bool IsSideTrail;
+
+    public MarkdownDocument? Parsed;
+
+    public bool HasChildren => Children != null && Children.Length > 0;
 
     public PageModel? Up => Parent;
 
     public PageModel? EffectiveNext {
         get {
-            if (Children != null && Children.Length > 0)
+            if (Children is { Length: > 0 })
                 return Children[0];
             if (NextSibling != null)
                 return NextSibling;
@@ -123,7 +139,7 @@ public class PageModel
         }
     }
 
-    public PageModel? EffectivePrevious 
+    public PageModel? EffectivePrevious
     {
         get {
             if (PreviousSibling != null)
@@ -132,6 +148,9 @@ public class PageModel
             return Parent;
         }
     }
+
+    public PageModel? NextSection => HasChildren?NextSibling:Parent?.NextSibling;
+    public PageModel? PreviousSection => HasChildren?PreviousSibling:Parent?.PreviousSibling;
 
     private PageModel EndOfSubtree (PageModel root) {
         if (root.Children == null || root.Children.Length == 0)

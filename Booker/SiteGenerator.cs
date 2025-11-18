@@ -1,9 +1,11 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using RazorLight;
 using Serilog;
+using static System.Char;
 
 namespace Booker
 {
@@ -160,7 +162,7 @@ namespace Booker
             Log.Debug($"  Input directory: {inputs.FullName}");
             Log.Debug($"  Output directory: {outputs.FullName}");
 
-            (PageResult root, IEnumerable<PageResult> subTree) LoadDirectory (string path, string sequenceNumber) {
+            (PageResult root, IEnumerable<PageResult> subTree) LoadDirectory (string path, string directorySequenceNumber) {
                 var entries = Directory.GetFiles(path).Where(p => Equals(Path.GetExtension(p), SourceExtension))
                     .Concat(Directory.GetDirectories(path)).ToArray();
                 Array.Sort(entries);
@@ -168,32 +170,42 @@ namespace Booker
                     throw new FileNotFoundException($"Directory {path} contains no 0.md file");
                 var root = PrepareEmptyPageResult(new FileInfo(entries[0]), outputs);
 #if SEQUENCE_NUMBERS
-                root.SequenceNumber = sequenceNumber;
+                root.SequenceNumber = directorySequenceNumber;
 #endif
                 IEnumerable<PageResult> subtree = new[] { root };
 
+                bool IsTrueChild (string p) => IsDigit(Path.GetFileName(p)[0]);
+
                 // Read children
-                var children = new PageResult[entries.Length - 1];
+                var trueChildren = entries.Skip(1).Count(IsTrueChild);
+                var children = new PageResult[trueChildren];
+                var nextChild = 0;
+                var sideTrails = new PageResult[entries.Length - 1 - trueChildren];
+                var nextSideTrail = 0;
+
                 for (var i = 1; i < entries.Length; i++) {
                     var p = entries[i];
                     PageResult page;
-                    var mySequenceNumber = $"{sequenceNumber}.{i}";
+                    var childSequenceNumber = directorySequenceNumber == ""?(i-1).ToString():$"{directorySequenceNumber}.{i}";
                     if (Equals(Path.GetExtension(p), ".md")) {
                         page = PrepareEmptyPageResult(new FileInfo(p), outputs);
 #if SEQUENCE_NUMBERS
-                        page.SequenceNumber = $"{sequenceNumber}.{i}";
+                        page.SequenceNumber = childSequenceNumber;
 #endif
                     }
                     else {
-                        var result = LoadDirectory(p, mySequenceNumber);
+                        var result = LoadDirectory(p, childSequenceNumber);
                         page = result.root;
 #if SEQUENCE_NUMBERS
-                        page.SequenceNumber = sequenceNumber;
+                        page.SequenceNumber = childSequenceNumber;
 #endif
                         subtree = subtree.Concat(result.subTree);
                     }
                     subtree = subtree.Append(page);
-                    children[i - 1] = page;
+                    if (IsTrueChild(p))
+                        children[nextChild++] = page;
+                    else
+                        sideTrails[nextSideTrail++] = page;
                     page.Up = root;
                 }
 
@@ -205,7 +217,10 @@ namespace Booker
                         child.Next = children[i + 1];
                 }
 
-                root.Children = children;
+                if (children.Length > 0)
+                    root.Children = children;
+                if (sideTrails.Length > 0)
+                    root.SideTrails = sideTrails;
 
                 return (root, subtree);
             }
@@ -235,7 +250,16 @@ namespace Booker
 #endif
                 if (page.Children != null)
                     model.Children = page.Children.Select(p => p.Model).ToArray();
+                if (page.SideTrails != null) {
+                    model.SideTrails = page.SideTrails.Select(p => p.Model).ToArray();
+                    foreach (var st in model.SideTrails)
+                        st.IsSideTrail = true;
+                }
             }
+
+            foreach (var page in all.Pages) ResolveLinks(page);
+
+            foreach (var page in all.Pages) RenderContents(page);
 
             RemoveDrafts(all.Pages);
             MoveIndexPagesToEnd(all.Pages);
@@ -276,13 +300,13 @@ namespace Booker
             var dir = inpath.DirectoryName;
             var name = inpath.Name;
             if (name == "0.md") {
-                
+
                 if (dir == sourceDirectoryPath)
                     name = "index.md";
                 else
                     name = Path.GetFileName(dir)!;
             }
-            if (char.IsDigit(name[0]))
+            if (IsDigit(name[0]))
                 name = name.Substring(name.IndexOf(' ') + 1);
             var outfile = Path.ChangeExtension(name, ".html");
             var outpath = new FileInfo(Path.Combine(outputs.FullName, outfile));
@@ -317,12 +341,12 @@ namespace Booker
         }
 
         /// <summary>
-        /// Destroy and recreate the output directory. 
+        /// Destroy and recreate the output directory.
         /// </summary>
         private void ClearOutOutputDirectory (DirectoryInfo outdir) {
             // just use the string path, we don't want to hold on to dirinfo that's being deleted
             string path = outdir.FullName;
-            
+
             if (Directory.Exists(path)) {
                 Log.Information($"Deleting output directory {path}");
                 string temp = $"{path}_temp_{DateTime.Now.Ticks.ToString()}";
@@ -361,9 +385,11 @@ namespace Booker
             return count;
         }
 
+        enum LineState { Text, Yaml, Code };
+
         /// <summary>
         /// Blocking load from the input directory, followed by conversion of page contents
-        /// from markdown to HTML. 
+        /// from markdown to HTML.
         /// </summary>
         /// <param name="page"></param>
         /// <param name="stats"></param>
@@ -371,46 +397,118 @@ namespace Booker
             FileInfo inpath = page.InPath;
             Log.Debug($"  Loading page {inpath.Name}");
 
-            var markdown = File.ReadAllText(inpath.FullName);
+            string AddEnSpaceBetweenSentences(string text)
+            {
+                return Regex.Replace(text, @"([\.\?!]""*(\[\^[^\]]+\]|))  ", @"$1&ensp; ");
+            }
 
-            var cut = markdown.IndexOf("#NoPublish", StringComparison.InvariantCultureIgnoreCase);
-            if (cut >= 0)
-                markdown = markdown.Substring(0, cut);
-            cut = markdown.IndexOf("# NoPublish", StringComparison.InvariantCultureIgnoreCase);
-            if (cut >= 0)
-                markdown = markdown.Substring(0, cut);
+            var yaml = new StringBuilder();
+            var buffer = new StringBuilder();
 
-            markdown = Regex.Replace(markdown, @"\.(""*\[\^.+\]""*|""*)  ", @".$1&ensp; ");
+            LineState state = LineState.Text;
 
-            var document = Markdown.Parse(markdown, Pipeline);
+            foreach (var line in File.ReadLines(inpath.FullName)) {
+                switch (state) {
+                    case LineState.Text:
+                        switch (line)
+                        {
+                            case "---":
+                                state = LineState.Yaml;
+                                yaml.AppendLine(line);
+                                break;
 
-            // Find all the links whose URLs are names of pages and replace them with the URL for the page.
-            foreach (var link in document.Descendants<LinkInline>()) {
+                            case "#NoPublish":
+                                goto done;
+
+                            default:
+                            {
+                                if (line.StartsWith("```")) {
+                                    buffer.AppendLine(line);
+                                    state = LineState.Code;
+                                }
+                                else
+                                    buffer.AppendLine(AddEnSpaceBetweenSentences(line));
+                                break;
+                            }
+                        }
+                        break;
+
+                    case LineState.Yaml:
+                        yaml.AppendLine(line);
+                        if (line == "---")
+                            state = LineState.Text;
+                        break;
+
+                    case LineState.Code:
+                        buffer.AppendLine(line);
+                        if (line == "```")
+                            state = LineState.Text;
+                        break;
+                }
+            }
+            done:
+
+            var markdown = buffer.ToString();
+
+            var model = page.Model = YamlUtils.ExtractYamlHeader<PageModel>(inpath, yaml.ToString());
+            model.PageTitle = Markdown.Parse(model.PageTitle).ToHtml(Pipeline).Replace("<p>","").Replace("</p>","");
+            if (model.ShortTitle != null)
+                model.ShortTitle = Markdown.Parse(model.ShortTitle).ToHtml(Pipeline).Replace("<p>","").Replace("</p>","");
+
+            model.Parsed = Markdown.Parse(markdown, Pipeline);
+
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            if (model.Template == null)
+                model.Template = "page.cshtml";
+            model.Markdown = markdown;
+            model.PageLink = page.LinkName;
+            model.Site = SiteConfig;
+            model.All = stats;
+        }
+
+        private void RenderContents(PageResult page) => page.Model.Contents = page.Model.Parsed.ToHtml(Pipeline);
+
+        private void ResolveLinks(PageResult page) {
+            foreach (var link in page.Model.Parsed.Descendants<LinkInline>()) {
                 var target = link.Url;
-                if (target!= null && !target.StartsWith("http") && !HasMediaFileExtension(target)) {
+
+                switch (target) {
+                    case "next":
+                        target = page.Model.EffectiveNext.PageLinkWithoutExtension;
+                        break;
+
+                    case "previous":
+                        target = page.Model.EffectiveNext.PageLinkWithoutExtension;
+                        break;
+
+                    case "parent":
+                        target = page.Model.Parent.PageLinkWithoutExtension;
+                        break;
+
+                    case "next-section":
+                        target = page.Model.NextSection.PageLinkWithoutExtension;
+                        break;
+
+                    case "previous-section":
+                        target = page.Model.PreviousSection.PageLinkWithoutExtension;
+                        break;
+                }
+
+                var path = page.InPath.FullName.Substring(sourceDirectoryPath!.Length+1);
+                if (target == null)
+                    Log.Warning($"{path}: Link with null target.'");
+                else if (target.StartsWith("wiki:"))
+                    link.Url = target.Replace("wiki:", "https://en.wikipedia.org/wiki/");
+                else if (!target.StartsWith("#") && !target.StartsWith("http") && !HasMediaFileExtension(target)) {
                     var hash = target.IndexOf('#');
                     var url = hash > 0 ? target.Substring(0, hash) : target;
                     var anchor = hash > 0 ? target.Substring(hash) : "";
                     if (pageNames.TryGetValue(url.ToLower(), out var p))
                         link.Url = p+anchor;
-                    else {
-                        var path = page.InPath.FullName.Substring(sourceDirectoryPath!.Length+1);
+                    else
                         Log.Warning($"{path}: Unknown link url '{url}'");
-                    }
                 }
             }
-
-            var contents = document.ToHtml(Pipeline);
-
-            var model = page.Model = YamlUtils.ExtractYamlHeader<PageModel>(inpath, markdown);
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            if (model.Template == null)
-                model.Template = "page.cshtml";
-            model.Markdown = markdown;
-            model.Contents = contents;
-            model.PageLink = page.LinkName;
-            model.Site = SiteConfig;
-            model.All = stats;
         }
 
         /// <summary>

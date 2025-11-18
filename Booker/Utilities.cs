@@ -27,8 +27,9 @@ namespace Booker
                 string childPath = children[i];
                 var name = Path.GetFileName(childPath);
                 var realName = name.Substring(name.IndexOf(' ') + 1);
+                var isNumbered = char.IsDigit(name[0]);
                 var sequenceNumber = big ? $"{i * 10:D3}" : $"{i * 10:D2}";
-                var newPath = Path.Combine(path, $"{sequenceNumber} {realName}");
+                var newPath = isNumbered?Path.Combine(path, $"{sequenceNumber} {realName}"):childPath;
                 if (Directory.Exists(childPath)) {
                     if (newPath != childPath)
                         Directory.Move(childPath, newPath);
@@ -39,5 +40,7 @@ namespace Booker
                     File.Move(childPath, newPath);
             }
         }
+
+        public static string Capitalized (this string s) => $"{char.ToUpper(s[0])}{s.Substring(1)}";
     }
 }
