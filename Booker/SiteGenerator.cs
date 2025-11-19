@@ -259,13 +259,15 @@ namespace Booker
 
             foreach (var page in all.Pages) ResolveLinks(page);
 
-            foreach (var page in all.Pages) RenderContents(page);
+            Parallel.ForEach(all.Pages, RenderContents);
 
             RemoveDrafts(all.Pages);
             MoveIndexPagesToEnd(all.Pages);
 
             Log.Information("Converting pages to HTML...");
-            foreach (var page in all.Pages) await RenderPage(page);
+            //foreach (var page in all.Pages) await RenderPage(page);
+            Task.WaitAll(all.Pages.Select(RenderPage));
+
 
             Log.Information("Preparing the output directory...");
             ClearOutOutputDirectory(outputs);
@@ -273,7 +275,7 @@ namespace Booker
             CopyMediaFiles(inputs.FullName, outputs.FullName);
 
             Log.Information("Writing HTML pages to disk...");
-            foreach (var page in all.Pages) WritePage(page);
+            Parallel.ForEach(all.Pages, WritePage);
 
             Log.Information($"Done. Processed {all.Pages.Count} pages.");
             return all;
