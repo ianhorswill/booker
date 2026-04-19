@@ -108,6 +108,7 @@ namespace Booker
                 Log.Error(e.Message);
                 Log.Information("Rebuild aborted");
             }
+            GC.Collect();   // This really shouldn't be necessary, but files seem to get locked for some reason
             rebuilding = false;
         }
 
@@ -259,14 +260,16 @@ namespace Booker
 
             foreach (var page in all.Pages) ResolveLinks(page);
 
-            Parallel.ForEach(all.Pages, RenderContents);
+            Log.Information("Converting pages to HTML...");
+
+            // Create the HTML but don't write it yet.
+            Parallel.ForEach(all.Pages, ConvertMarkdownToHtml);
 
             RemoveDrafts(all.Pages);
             MoveIndexPagesToEnd(all.Pages);
 
-            Log.Information("Converting pages to HTML...");
-            //foreach (var page in all.Pages) await RenderPage(page);
-            Task.WaitAll(all.Pages.Select(RenderPage));
+            //foreach (var page in all.Pages) await ConvertPageToFinalHtml(page);
+            Task.WaitAll(all.Pages.Select(ConvertPageToFinalHtml));
 
 
             Log.Information("Preparing the output directory...");
@@ -281,7 +284,7 @@ namespace Booker
             return all;
         }
 
-        public static readonly string[] MediaExtensions = { ".jpg", ".jpeg", ".png" };
+        public static readonly string[] MediaExtensions = [".jpg", ".jpeg", ".png", ".txt", ".step", ".gen"];
 
         private void CopyMediaFiles (string inputs, string outputs) {
             foreach (var file in Directory.GetFiles(inputs))
@@ -359,7 +362,7 @@ namespace Booker
             }
 
             Log.Information($"Creating output directory {path}");
-            Directory.CreateDirectory(path);
+            Directory.CreateDirectory(path); 
         }
 
         /// <summary>
@@ -468,7 +471,7 @@ namespace Booker
             model.All = stats;
         }
 
-        private void RenderContents(PageResult page) => page.Model.Contents = page.Model.Parsed.ToHtml(Pipeline);
+        private void ConvertMarkdownToHtml(PageResult page) => page.Model.Contents = page.Model.Parsed.ToHtml(Pipeline);
 
         private void ResolveLinks(PageResult page) {
             foreach (var link in page.Model.Parsed.Descendants<LinkInline>()) {
@@ -517,7 +520,7 @@ namespace Booker
         /// Renders the HTML page using a .cshtml template file and the contents from
         /// the already-transformed markdown file
         /// </summary>
-        private async Task RenderPage (PageResult page) {
+        private async Task ConvertPageToFinalHtml (PageResult page) {
             try {
                 Log.Debug($"  Rendering page {page.InPath.Name} => {page.OutPath.Name}");
                 page.HtmlOutput = await Engine.CompileRenderAsync(page.Model.Template, page.Model);
