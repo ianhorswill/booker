@@ -284,7 +284,7 @@ namespace Booker
             return all;
         }
 
-        public static readonly string[] MediaExtensions = [".jpg", ".jpeg", ".png", ".txt", ".step", ".gen"];
+        public static readonly string[] MediaExtensions = [".jpg", ".jpeg", ".png", ".webp", ".txt", ".step", ".gen"];
 
         private void CopyMediaFiles (string inputs, string outputs) {
             foreach (var file in Directory.GetFiles(inputs))
